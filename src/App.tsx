@@ -8,13 +8,18 @@ type Category =
   | 'Instrumento & Técnica'
   | 'Música Antiga / HIP'
   | 'Frases no Workshop'
-type View = 'home' | 'study' | 'stats'
+type View = 'home' | 'study' | 'results' | 'stats'
 type StudyMode = 'pt-first' | 'reverse' | 'random'
 type StudyDirection = 'pt-first' | 'reverse'
 
 interface SessionCard {
   id: string
   direction: StudyDirection
+}
+
+interface SessionReview {
+  id: string
+  confidence: Confidence
 }
 
 interface Card {
@@ -43,6 +48,7 @@ interface StreakState {
 const CARDS_KEY = 'musicpt:cards'
 const STREAK_KEY = 'musicpt:streak'
 const STUDY_MODE_KEY = 'musicpt:studyMode'
+const SESSION_SIZE = 10
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const cards: Card[] = [
@@ -198,7 +204,7 @@ function App() {
   const [studyMode, setStudyMode] = useState<StudyMode>(loadStudyMode)
   const [selectedCategories, setSelectedCategories] = useState<Category[]>(categories)
   const [sessionCards, setSessionCards] = useState<SessionCard[]>([])
-  const [reviewedIds, setReviewedIds] = useState<string[]>([])
+  const [sessionReviews, setSessionReviews] = useState<SessionReview[]>([])
   const [cardIndex, setCardIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -239,12 +245,19 @@ function App() {
   const currentSessionCard = sessionCards[cardIndex]
   const currentCard = cards.find((card) => card.id === currentSessionCard?.id)
   const currentDirection = currentSessionCard?.direction ?? 'pt-first'
-  const progress = sessionCards.length ? Math.round((reviewedIds.length / sessionCards.length) * 100) : 0
+  const progress = sessionCards.length ? Math.round((sessionReviews.length / sessionCards.length) * 100) : 0
+  const resultKnown = sessionReviews.filter((review) => review.confidence === 'know').length
+  const resultNeedsPractice = sessionReviews
+    .filter((review) => review.confidence !== 'know')
+    .map((review) => ({ review, card: cards.find((card) => card.id === review.id) }))
+    .filter((item): item is { review: SessionReview; card: Card } => Boolean(item.card))
 
   const startStudy = () => {
-    const session = shuffleCards(dueCards).map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
+    const session = shuffleCards(dueCards)
+      .slice(0, SESSION_SIZE)
+      .map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
     setSessionCards(session)
-    setReviewedIds([])
+    setSessionReviews([])
     setCardIndex(0)
     setFlipped(false)
     setView('study')
@@ -253,7 +266,7 @@ function App() {
   const finishReview = (confidence: Confidence) => {
     if (!currentCard) return
     setStates((current) => ({ ...current, [currentCard.id]: reviewCard(current[currentCard.id], confidence) }))
-    setReviewedIds((ids) => [...ids, currentCard.id])
+    setSessionReviews((reviews) => [...reviews, { id: currentCard.id, confidence }])
     setFlipped(false)
     if (cardIndex + 1 >= sessionCards.length) {
       const today = dateKey(Date.now())
@@ -262,7 +275,7 @@ function App() {
         lastDate: today,
         count: current.lastDate === today ? current.count : current.lastDate === yesterday ? current.count + 1 : 1,
       }))
-      setView('home')
+      setView('results')
     } else {
       setCardIndex((index) => index + 1)
     }
@@ -307,7 +320,7 @@ function App() {
                 </div>
               </div>
               <button className="primary mt-5 w-full" disabled={dueCards.length === 0} onClick={startStudy} type="button">
-                今日の単語を始める ({dueCards.length})
+                今日の単語を始める ({Math.min(dueCards.length, SESSION_SIZE)} / {dueCards.length})
               </button>
             </div>
 
@@ -373,7 +386,7 @@ function App() {
               <>
                 <div className="mb-4">
                   <div className="flex justify-between text-sm font-medium">
-                    <span>{reviewedIds.length + 1} / {sessionCards.length}</span>
+                    <span>{sessionReviews.length + 1} / {sessionCards.length}</span>
                     <span>{progress}%</span>
                   </div>
                   <div className="meter mt-2"><span style={{ width: `${progress}%` }} /></div>
@@ -406,6 +419,51 @@ function App() {
             ) : (
               <EmptyState title="今日の対象はありません" action="Homeに戻る" onAction={() => setView('home')} />
             )}
+          </section>
+        )}
+
+        {view === 'results' && (
+          <section className="space-y-5">
+            <div className="hero-panel">
+              <p className="eyebrow">Session complete</p>
+              <h1>今回の結果</h1>
+              <div className="mt-5">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>達成度</span>
+                  <span>{sessionReviews.length ? `${resultKnown}/${sessionReviews.length}` : '0/0'}</span>
+                </div>
+                <div className="meter mt-2">
+                  <span style={{ width: `${sessionReviews.length ? (resultKnown / sessionReviews.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+              <div className="stats-grid mt-5">
+                <Stat label="今回の単語" value={sessionReviews.length} />
+                <Stat label="わかる" value={resultKnown} />
+                <Stat label="再学習" value={resultNeedsPractice.length} />
+              </div>
+              <button className="primary mt-5 w-full" disabled={dueCards.length === 0} onClick={startStudy} type="button">
+                もう一度やる
+              </button>
+            </div>
+
+            <section className="panel">
+              <h2>再学習が必要な単語</h2>
+              {resultNeedsPractice.length ? (
+                <div className="practice-list">
+                  {resultNeedsPractice.map(({ review, card }) => (
+                    <div key={card.id}>
+                      <span>
+                        <strong>{card.pt}</strong>
+                        <small>{card.en} / {card.ja}</small>
+                      </span>
+                      <b>{review.confidence === 'unsure' ? '不安' : 'わからない'}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-copy">今回の再学習対象はありません。</p>
+              )}
+            </section>
           </section>
         )}
 

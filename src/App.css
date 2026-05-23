@@ -282,6 +282,49 @@
   color: #786e62;
 }
 
+.practice-list {
+  margin-top: 0.75rem;
+}
+
+.practice-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #eadfce;
+  padding: 0.7rem 0;
+}
+
+.practice-list span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.practice-list strong {
+  color: #182820;
+}
+
+.practice-list small {
+  color: #71675b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.practice-list b {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #f5e8bc;
+  padding: 0.3rem 0.55rem;
+  color: #765713;
+  font-size: 0.78rem;
+}
+
+.empty-copy {
+  margin-top: 0.75rem;
+  color: #71675b;
+  font-weight: 700;
+}
+
 button:focus-visible,
 input:focus-visible {
   outline: 3px solid rgb(47 125 90 / 35%);
