@@ -220,11 +220,56 @@ function selectSessionCards(
     .slice(0, SESSION_SIZE)
 }
 
+function normalizeForChoice(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function sharedCharacterScore(first: string, second: string): number {
+  const firstChars = new Set(first.replace(/\s/g, ''))
+  const secondChars = new Set(second.replace(/\s/g, ''))
+  if (!firstChars.size || !secondChars.size) return 0
+  const shared = [...firstChars].filter((char) => secondChars.has(char)).length
+  return shared / Math.max(firstChars.size, secondChars.size)
+}
+
+function testDistractorScore(answer: Card, candidate: Card): number {
+  const answerText = normalizeForChoice(answer.pt)
+  const candidateText = normalizeForChoice(candidate.pt)
+  const answerWords = answerText.split(' ').filter(Boolean)
+  const candidateWords = candidateText.split(' ').filter(Boolean)
+  const answerWordSet = new Set(answerWords)
+  const sharedWords = candidateWords.filter((word) => answerWordSet.has(word)).length
+  const maxWordCount = Math.max(answerWords.length, candidateWords.length, 1)
+  const lengthSimilarity =
+    1 - Math.min(Math.abs(answerText.length - candidateText.length) / Math.max(answerText.length, candidateText.length, 1), 1)
+  const wordCountSimilarity = 1 - Math.min(Math.abs(answerWords.length - candidateWords.length) / maxWordCount, 1)
+  const sameShape = answer.pt.includes('?') === candidate.pt.includes('?') && answer.pt.includes('.') === candidate.pt.includes('.')
+  return (
+    (answer.category === candidate.category ? 100 : 0) +
+    lengthSimilarity * 22 +
+    wordCountSimilarity * 18 +
+    sharedCharacterScore(answerText, candidateText) * 18 +
+    (sharedWords / maxWordCount) * 30 +
+    (sameShape ? 8 : 0)
+  )
+}
+
+function selectTestDistractors(answer: Card, cardPool: Card[]): string[] {
+  return shuffleCards(cardPool.filter((item) => item.id !== answer.id))
+    .sort((first, second) => testDistractorScore(answer, second) - testDistractorScore(answer, first))
+    .slice(0, 3)
+    .map((item) => item.pt)
+}
+
 function buildTestQuestions(cardPool: Card[], states: Record<string, CardState>, time: number, cycleSpeed: CycleSpeed): TestQuestion[] {
   return selectSessionCards(cardPool, states, time, cycleSpeed).map((card) => {
-    const distractors = shuffleCards(cardPool.filter((item) => item.id !== card.id))
-      .slice(0, 3)
-      .map((item) => item.pt)
+    const distractors = selectTestDistractors(card, cardPool)
     return {
       id: card.id,
       choices: shuffleCards([card.pt, ...distractors]),
