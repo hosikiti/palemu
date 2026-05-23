@@ -145,6 +145,17 @@ function directionForMode(mode: StudyMode): StudyDirection {
   return mode
 }
 
+function shuffleCards<T>(items: T[]): T[] {
+  const shuffled = [...items]
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    const item = shuffled[index]
+    shuffled[index] = shuffled[randomIndex]
+    shuffled[randomIndex] = item
+  }
+  return shuffled
+}
+
 function reviewCard(state: CardState, confidence: Confidence): CardState {
   const now = Date.now()
   if (confidence === 'unknown') {
@@ -231,7 +242,7 @@ function App() {
   const progress = sessionCards.length ? Math.round((reviewedIds.length / sessionCards.length) * 100) : 0
 
   const startStudy = () => {
-    const session = dueCards.map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
+    const session = shuffleCards(dueCards).map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
     setSessionCards(session)
     setReviewedIds([])
     setCardIndex(0)
