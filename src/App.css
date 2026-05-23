@@ -140,6 +140,10 @@
   gap: 0.55rem;
 }
 
+.speed-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .mode-option {
   display: grid;
   min-height: 84px;

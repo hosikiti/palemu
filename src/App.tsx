@@ -11,6 +11,7 @@ type Category =
 type View = 'home' | 'study' | 'results' | 'stats'
 type StudyMode = 'pt-first' | 'reverse' | 'random'
 type StudyDirection = 'pt-first' | 'reverse'
+type CycleSpeed = 'normal' | 'fast'
 
 interface SessionCard {
   id: string
@@ -48,6 +49,7 @@ interface StreakState {
 const CARDS_KEY = 'musicpt:cards'
 const STREAK_KEY = 'musicpt:streak'
 const STUDY_MODE_KEY = 'musicpt:studyMode'
+const CYCLE_SPEED_KEY = 'musicpt:cycleSpeed'
 const SESSION_SIZE = 10
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -146,6 +148,11 @@ function loadStudyMode(): StudyMode {
   return saved === 'pt-first' || saved === 'reverse' || saved === 'random' ? saved : 'pt-first'
 }
 
+function loadCycleSpeed(): CycleSpeed {
+  const saved = localStorage.getItem(CYCLE_SPEED_KEY)
+  return saved === 'fast' ? saved : 'normal'
+}
+
 function directionForMode(mode: StudyMode): StudyDirection {
   if (mode === 'random') return Math.random() < 0.5 ? 'pt-first' : 'reverse'
   return mode
@@ -162,8 +169,9 @@ function shuffleCards<T>(items: T[]): T[] {
   return shuffled
 }
 
-function reviewCard(state: CardState, confidence: Confidence): CardState {
+function reviewCard(state: CardState, confidence: Confidence, cycleSpeed: CycleSpeed): CardState {
   const now = Date.now()
+  const speedMultiplier = cycleSpeed === 'fast' ? 0.1 : 1
   if (confidence === 'unknown') {
     return {
       ...state,
@@ -180,7 +188,7 @@ function reviewCard(state: CardState, confidence: Confidence): CardState {
     return {
       ...state,
       interval,
-      nextReview: now + interval * DAY_MS,
+      nextReview: now + interval * DAY_MS * speedMultiplier,
       repetitions: state.repetitions + 1,
       lastConfidence: confidence,
     }
@@ -190,7 +198,7 @@ function reviewCard(state: CardState, confidence: Confidence): CardState {
   return {
     ...state,
     interval,
-    nextReview: now + interval * DAY_MS,
+    nextReview: now + interval * DAY_MS * speedMultiplier,
     easeFactor: Math.min(3.2, state.easeFactor + 0.08),
     repetitions: state.repetitions + 1,
     lastConfidence: confidence,
@@ -202,6 +210,7 @@ function App() {
   const [states, setStates] = useState<Record<string, CardState>>(loadCardStates)
   const [streak, setStreak] = useState<StreakState>(loadStreak)
   const [studyMode, setStudyMode] = useState<StudyMode>(loadStudyMode)
+  const [cycleSpeed, setCycleSpeed] = useState<CycleSpeed>(loadCycleSpeed)
   const [selectedCategories, setSelectedCategories] = useState<Category[]>(categories)
   const [sessionCards, setSessionCards] = useState<SessionCard[]>([])
   const [sessionReviews, setSessionReviews] = useState<SessionReview[]>([])
@@ -212,6 +221,7 @@ function App() {
   useEffect(() => localStorage.setItem(CARDS_KEY, JSON.stringify(states)), [states])
   useEffect(() => localStorage.setItem(STREAK_KEY, JSON.stringify(streak)), [streak])
   useEffect(() => localStorage.setItem(STUDY_MODE_KEY, studyMode), [studyMode])
+  useEffect(() => localStorage.setItem(CYCLE_SPEED_KEY, cycleSpeed), [cycleSpeed])
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000)
     return () => window.clearInterval(timer)
@@ -265,7 +275,7 @@ function App() {
 
   const finishReview = (confidence: Confidence) => {
     if (!currentCard) return
-    setStates((current) => ({ ...current, [currentCard.id]: reviewCard(current[currentCard.id], confidence) }))
+    setStates((current) => ({ ...current, [currentCard.id]: reviewCard(current[currentCard.id], confidence, cycleSpeed) }))
     setSessionReviews((reviews) => [...reviews, { id: currentCard.id, confidence }])
     setFlipped(false)
     if (cardIndex + 1 >= sessionCards.length) {
@@ -367,6 +377,28 @@ function App() {
                   >
                     <strong>{mode.label}</strong>
                     <span>{mode.detail}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="section-title">
+                <h2>回転速度</h2>
+              </div>
+              <div className="mode-grid speed-grid">
+                {[
+                  { id: 'normal', label: '通常', detail: '標準の復習サイクル' },
+                  { id: 'fast', label: '超高速', detail: '復習サイクルを10倍速にする' },
+                ].map((speed) => (
+                  <button
+                    key={speed.id}
+                    className={cycleSpeed === speed.id ? 'mode-option selected' : 'mode-option'}
+                    onClick={() => setCycleSpeed(speed.id as CycleSpeed)}
+                    type="button"
+                  >
+                    <strong>{speed.label}</strong>
+                    <span>{speed.detail}</span>
                   </button>
                 ))}
               </div>
