@@ -334,7 +334,7 @@ function App() {
           <section className="space-y-5">
             <div className="hero-panel">
               <p className="eyebrow">Português para música barroca</p>
-              <h1>今日の単語を定着させる</h1>
+              <h1>Palavras</h1>
               <div className="mt-5">
                 <div className="flex justify-between text-sm font-medium">
                   <span>今日の達成率</span>
