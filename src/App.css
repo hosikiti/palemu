@@ -1,0 +1,264 @@
+.brand {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #182820;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #d8d0c2;
+  border-radius: 8px;
+  background: #eee7db;
+}
+
+.segmented button,
+.section-title button {
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  color: #5e574d;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.segmented .active {
+  background: #ffffff;
+  color: #1d2f26;
+  box-shadow: 0 1px 4px rgb(60 48 32 / 12%);
+}
+
+.hero-panel,
+.panel {
+  border: 1px solid #ded5c6;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 1.15rem;
+  box-shadow: 0 12px 28px rgb(57 42 24 / 8%);
+}
+
+.hero-panel h1 {
+  margin-top: 0.35rem;
+  color: #182820;
+  font-size: 2.1rem;
+  font-weight: 850;
+  line-height: 1.05;
+}
+
+.eyebrow {
+  color: #8f3f2b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meter {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5dccd;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2f7d5a;
+  transition: width 180ms ease;
+}
+
+.primary,
+.ghost,
+.danger,
+.answer-grid button {
+  min-height: 48px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.primary {
+  background: #245c46;
+  color: #ffffff;
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+  background: #a9ada3;
+}
+
+.ghost {
+  border: 1px solid #d5cbbb;
+  color: #62594d;
+}
+
+.danger {
+  border: 1px solid #c87565;
+  color: #9c3022;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.section-title h2,
+.panel h2 {
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #d8d0c2;
+  border-radius: 999px;
+  background: #fffaf2;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.chip.selected {
+  border-color: #2f7d5a;
+  background: #e4f0e7;
+  color: #1d4c38;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.stat {
+  border: 1px solid #ded5c6;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 0.85rem;
+}
+
+.stat span {
+  display: block;
+  color: #72695d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #182820;
+  font-size: 1.45rem;
+}
+
+.flashcard {
+  display: flex;
+  min-height: 320px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  border: 1px solid #d8d0c2;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 1rem;
+  text-align: center;
+  box-shadow: 0 14px 32px rgb(57 42 24 / 10%);
+}
+
+.category-tag {
+  border-radius: 999px;
+  background: #eee7db;
+  padding: 0.35rem 0.65rem;
+  color: #695f52;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.pt {
+  color: #16271f;
+  font-size: 2.45rem;
+  font-weight: 850;
+  line-height: 1.05;
+}
+
+.answer {
+  display: grid;
+  gap: 0.35rem;
+  color: #4a4238;
+  font-size: 1.25rem;
+}
+
+.answer strong {
+  color: #9a3a2c;
+  font-size: 1.45rem;
+}
+
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.answer-grid .know {
+  background: #dff0e5;
+  color: #19593e;
+}
+
+.answer-grid .unsure {
+  background: #f5e8bc;
+  color: #765713;
+}
+
+.answer-grid .unknown {
+  background: #f4d3cb;
+  color: #8f2d22;
+}
+
+.review-list {
+  margin-top: 0.75rem;
+  max-height: 330px;
+  overflow: auto;
+}
+
+.review-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #eadfce;
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.review-list time {
+  flex: 0 0 auto;
+  color: #786e62;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgb(47 125 90 / 35%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 430px) {
+  .stats-grid,
+  .answer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pt {
+    font-size: 2rem;
+  }
+}

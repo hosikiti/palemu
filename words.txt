@@ -1,0 +1,85 @@
+　# Musicpt — Vocab List
+
+## Solfejo (10)
+| PT | EN | JA |
+|---|---|---|
+| Dó | C | ド |
+| Ré | D | レ |
+| Mi | E | ミ |
+| Fá | F | ファ |
+| Sol | G | ソ |
+| Lá | A | ラ |
+| Si | B | シ |
+| sustenido | ♯ sharp | シャープ |
+| bemol | ♭ flat | フラット |
+| bequadro | ♮ natural | ナチュラル |
+
+## Fundamentos (13)
+| PT | EN | JA |
+|---|---|---|
+| melodia | melody | メロディー |
+| harmonia | harmony | ハーモニー |
+| ritmo | rhythm | リズム |
+| compasso | bar / measure | 小節 |
+| tempo | tempo / time | テンポ |
+| acorde | chord | 和音 |
+| escala | scale | 音階 |
+| tonalidade | key / tonality | 調性 |
+| dinâmica | dynamics | 強弱 |
+| notação | notation | 記譜法 |
+| som | sound | 音 |
+| nota | note | 音符 |
+| tom | tone | 音程 |
+
+## Instrumento & Técnica (14)
+| PT | EN | JA |
+|---|---|---|
+| violino | violin | ヴァイオリン |
+| arco | bow | 弓 |
+| corda(s) | string(s) | 弦 |
+| arcada | bowing stroke | ボウイング |
+| arco acima | up-bow | アップボウ |
+| arco abaixo | down-bow | ダウンボウ |
+| dedilhação | fingering | 運指 |
+| postura | posture | 姿勢 |
+| articulação | articulation | アーティキュレーション |
+| afinação | tuning | チューニング |
+| afinado | in tune | 音程が合っている |
+| desafinado | out of tune | 音程が外れている |
+| tempo forte | strong beat | 強拍 |
+| tempo fraco | weak beat | 弱拍 |
+
+## Música Antiga / HIP (18)
+| PT | EN | JA |
+|---|---|---|
+| música antiga | early music | 古楽 |
+| música barroca | baroque music | バロック音楽 |
+| instrumento histórico | historical instrument | 古楽器 |
+| diapasão | pitch standard (A=415) | ピッチ基準 |
+| temperamento | temperament | 音律 |
+| ornamentação | ornamentation | 装飾音 |
+| trilo | trill | トリル |
+| improvisação | improvisation | 即興 |
+| baixo contínuo | basso continuo | バッソ・コンティヌオ |
+| baixo cifrado | figured bass | 数字付き低音 |
+| afeto / doutrina dos afetos | Affektenlehre | 感情論 |
+| vibrato como ornamento | vibrato as ornament | 装飾としてのビブラート |
+| sem vibrato | without vibrato | ノン・ビブラート |
+| hémiola | hemiola | ヘミオラ |
+| messa di voce | swell on a held note | メッサ・ディ・ヴォーチェ |
+| cravo | harpsichord | チェンバロ |
+| tiorba | theorbo | テオルボ |
+| viola da gamba | viol | ヴィオラ・ダ・ガンバ |
+
+## Frases no Workshop (7)
+| PT | EN | JA |
+|---|---|---|
+| Pode repetir, por favor? | Can you repeat, please? | もう一度言ってください。 |
+| Não percebi bem. | I didn't quite understand. | よく分かりませんでした。 |
+| Mais devagar, por favor. | Slower, please. | もっとゆっくりお願いします。 |
+| O que significa...? | What does ... mean? | 〜はどういう意味ですか？ |
+| Vamos experimentar. | Let's try it. | 試してみましょう。 |
+| Outra vez, desde o início. | Again, from the beginning. | もう一度、最初から。 |
+| Consigo tocar mais devagar. | I can play more slowly. | もっとゆっくり弾けます。 |
+
+## Total: 62 cards
