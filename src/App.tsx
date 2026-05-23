@@ -52,6 +52,7 @@ const STUDY_MODE_KEY = 'musicpt:studyMode'
 const CYCLE_SPEED_KEY = 'musicpt:cycleSpeed'
 const SESSION_SIZE = 10
 const DAY_MS = 24 * 60 * 60 * 1000
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 
 const cards: Card[] = [
   { id: 'do', pt: 'Dó', en: 'C', ja: 'ド', category: 'Solfejo' },
@@ -122,7 +123,11 @@ const categories = [...new Set(cards.map((card) => card.category))]
 
 const dateKey = (time: number) => new Date(time).toISOString().slice(0, 10)
 const startOfDay = (time: number) => new Date(dateKey(time)).getTime()
-const isMastered = (state: CardState) => state.interval >= 7 && state.lastConfidence === 'know'
+const isMastered = (state: CardState, cycleSpeed: CycleSpeed, time: number) => {
+  if (state.lastConfidence !== 'know') return false
+  if (cycleSpeed === 'fast') return state.nextReview - time >= FOUR_HOURS_MS
+  return state.interval >= 7
+}
 const defaultState = (id: string): CardState => ({
   id,
   interval: 0,
@@ -169,9 +174,10 @@ function shuffleCards<T>(items: T[]): T[] {
   return shuffled
 }
 
-function studyPriority(card: Card, state: CardState, time: number): number {
+function studyPriority(card: Card, state: CardState, time: number, cycleSpeed: CycleSpeed): number {
   const overdueDays = Math.max(0, time - state.nextReview) / DAY_MS
   const daysUntilReview = Math.max(0, state.nextReview - time) / DAY_MS
+  const mastered = isMastered(state, cycleSpeed, time)
   const confidenceScore =
     state.lastConfidence === 'unknown'
       ? 900
@@ -181,16 +187,39 @@ function studyPriority(card: Card, state: CardState, time: number): number {
           ? 600
           : 0
   const dueScore = state.nextReview <= time ? 1000 + overdueDays * 50 : 0
-  const weakScore = isMastered(state) ? 0 : Math.max(0, 7 - state.interval) * 40
+  const weakScore = mastered ? 0 : Math.max(0, 7 - state.interval) * 40
   const soonScore = Math.max(0, 10 - daysUntilReview)
-  const phraseBoost = card.category === 'Frases no Workshop' && !isMastered(state) ? 20 : 0
+  const phraseBoost = card.category === 'Frases no Workshop' && !mastered ? 20 : 0
   return dueScore + confidenceScore + weakScore + soonScore + phraseBoost
 }
 
-function selectSessionCards(cardPool: Card[], states: Record<string, CardState>, time: number): Card[] {
+function selectSessionCards(
+  cardPool: Card[],
+  states: Record<string, CardState>,
+  time: number,
+  cycleSpeed: CycleSpeed,
+): Card[] {
   return shuffleCards(cardPool)
-    .sort((first, second) => studyPriority(second, states[second.id], time) - studyPriority(first, states[first.id], time))
+    .sort(
+      (first, second) =>
+        studyPriority(second, states[second.id], time, cycleSpeed) -
+        studyPriority(first, states[first.id], time, cycleSpeed),
+    )
     .slice(0, SESSION_SIZE)
+}
+
+function speakPortuguese(text: string) {
+  if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'pt-PT'
+  utterance.rate = 0.82
+  utterance.pitch = 1
+  const voice = window.speechSynthesis
+    .getVoices()
+    .find((item) => item.lang.toLowerCase().startsWith('pt'))
+  if (voice) utterance.voice = voice
+  window.speechSynthesis.speak(utterance)
 }
 
 function reviewCard(state: CardState, confidence: Confidence, cycleSpeed: CycleSpeed): CardState {
@@ -266,7 +295,7 @@ function App() {
     [activeCards, now, states],
   )
   const todayReviewed = todayTarget.filter((card) => states[card.id].nextReview > now).length
-  const mastered = activeCards.filter((card) => isMastered(states[card.id])).length
+  const mastered = activeCards.filter((card) => isMastered(states[card.id], cycleSpeed, now)).length
   const needsReview = activeCards.filter((card) => states[card.id].lastConfidence !== 'know').length
   const currentSessionCard = sessionCards[cardIndex]
   const currentCard = cards.find((card) => card.id === currentSessionCard?.id)
@@ -279,7 +308,7 @@ function App() {
     .filter((item): item is { review: SessionReview; card: Card } => Boolean(item.card))
 
   const startStudy = () => {
-    const session = selectSessionCards(activeCards, states, Date.now())
+    const session = selectSessionCards(activeCards, states, Date.now(), cycleSpeed)
       .map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
     setSessionCards(session)
     setSessionReviews([])
@@ -415,6 +444,24 @@ function App() {
                 </div>
                 <button className={flipped ? 'flashcard flipped' : 'flashcard'} onClick={() => setFlipped((value) => !value)} type="button">
                   <span className="category-tag">{currentCard.category}</span>
+                  <span
+                    className="audio-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      speakPortuguese(currentCard.pt)
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        speakPortuguese(currentCard.pt)
+                      }
+                    }}
+                  >
+                    ▶
+                  </span>
                   {currentDirection === 'pt-first' ? (
                     <span className="pt">{currentCard.pt}</span>
                   ) : (
@@ -501,7 +548,7 @@ function App() {
               <div className="mt-4 space-y-3">
                 {categories.map((category) => {
                   const categoryCards = cards.filter((card) => card.category === category)
-                  const categoryMastered = categoryCards.filter((card) => isMastered(states[card.id])).length
+                  const categoryMastered = categoryCards.filter((card) => isMastered(states[card.id], cycleSpeed, now)).length
                   return (
                     <div key={category}>
                       <div className="flex justify-between text-sm"><span>{category}</span><span>{Math.round((categoryMastered / categoryCards.length) * 100)}%</span></div>
