@@ -15,10 +15,6 @@ pnpm dev
 pnpm build
 ```
 
-## Deploy
+## Deployment
 
-```sh
-pnpm deploy
-```
-
-`pnpm deploy` builds the app and publishes `dist/` to the `gh-pages` branch for GitHub Pages.
+Every push to `main` runs GitHub Actions, builds the app, and deploys `dist/` to GitHub Pages.
