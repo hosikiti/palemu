@@ -9,6 +9,13 @@ type Category =
   | 'Música Antiga / HIP'
   | 'Frases no Workshop'
 type View = 'home' | 'study' | 'stats'
+type StudyMode = 'pt-first' | 'reverse' | 'random'
+type StudyDirection = 'pt-first' | 'reverse'
+
+interface SessionCard {
+  id: string
+  direction: StudyDirection
+}
 
 interface Card {
   id: string
@@ -35,6 +42,7 @@ interface StreakState {
 
 const CARDS_KEY = 'musicpt:cards'
 const STREAK_KEY = 'musicpt:streak'
+const STUDY_MODE_KEY = 'musicpt:studyMode'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const cards: Card[] = [
@@ -127,6 +135,16 @@ function loadStreak(): StreakState {
   return saved ? (JSON.parse(saved) as StreakState) : { lastDate: '', count: 0 }
 }
 
+function loadStudyMode(): StudyMode {
+  const saved = localStorage.getItem(STUDY_MODE_KEY)
+  return saved === 'pt-first' || saved === 'reverse' || saved === 'random' ? saved : 'pt-first'
+}
+
+function directionForMode(mode: StudyMode): StudyDirection {
+  if (mode === 'random') return Math.random() < 0.5 ? 'pt-first' : 'reverse'
+  return mode
+}
+
 function reviewCard(state: CardState, confidence: Confidence): CardState {
   const now = Date.now()
   if (confidence === 'unknown') {
@@ -166,8 +184,9 @@ function App() {
   const [view, setView] = useState<View>('home')
   const [states, setStates] = useState<Record<string, CardState>>(loadCardStates)
   const [streak, setStreak] = useState<StreakState>(loadStreak)
+  const [studyMode, setStudyMode] = useState<StudyMode>(loadStudyMode)
   const [selectedCategories, setSelectedCategories] = useState<Category[]>(categories)
-  const [sessionIds, setSessionIds] = useState<string[]>([])
+  const [sessionCards, setSessionCards] = useState<SessionCard[]>([])
   const [reviewedIds, setReviewedIds] = useState<string[]>([])
   const [cardIndex, setCardIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -175,6 +194,7 @@ function App() {
 
   useEffect(() => localStorage.setItem(CARDS_KEY, JSON.stringify(states)), [states])
   useEffect(() => localStorage.setItem(STREAK_KEY, JSON.stringify(streak)), [streak])
+  useEffect(() => localStorage.setItem(STUDY_MODE_KEY, studyMode), [studyMode])
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000)
     return () => window.clearInterval(timer)
@@ -205,12 +225,14 @@ function App() {
   const todayReviewed = todayTarget.filter((card) => states[card.id].nextReview > now).length
   const mastered = activeCards.filter((card) => isMastered(states[card.id])).length
   const needsReview = activeCards.filter((card) => states[card.id].lastConfidence !== 'know').length
-  const currentCard = cards.find((card) => card.id === sessionIds[cardIndex])
-  const progress = sessionIds.length ? Math.round((reviewedIds.length / sessionIds.length) * 100) : 0
+  const currentSessionCard = sessionCards[cardIndex]
+  const currentCard = cards.find((card) => card.id === currentSessionCard?.id)
+  const currentDirection = currentSessionCard?.direction ?? 'pt-first'
+  const progress = sessionCards.length ? Math.round((reviewedIds.length / sessionCards.length) * 100) : 0
 
   const startStudy = () => {
-    const ids = dueCards.map((card) => card.id)
-    setSessionIds(ids)
+    const session = dueCards.map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
+    setSessionCards(session)
     setReviewedIds([])
     setCardIndex(0)
     setFlipped(false)
@@ -222,7 +244,7 @@ function App() {
     setStates((current) => ({ ...current, [currentCard.id]: reviewCard(current[currentCard.id], confidence) }))
     setReviewedIds((ids) => [...ids, currentCard.id])
     setFlipped(false)
-    if (cardIndex + 1 >= sessionIds.length) {
+    if (cardIndex + 1 >= sessionCards.length) {
       const today = dateKey(Date.now())
       const yesterday = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10)
       setStreak((current) => ({
@@ -303,6 +325,29 @@ function App() {
               </div>
             </section>
 
+            <section>
+              <div className="section-title">
+                <h2>学習方向</h2>
+              </div>
+              <div className="mode-grid">
+                {[
+                  { id: 'pt-first', label: 'PT → 意味', detail: 'ポルトガル語から確認' },
+                  { id: 'reverse', label: '意味 → PT', detail: '英語・日本語から推測' },
+                  { id: 'random', label: 'ランダム', detail: 'カードごとに混在' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    className={studyMode === mode.id ? 'mode-option selected' : 'mode-option'}
+                    onClick={() => setStudyMode(mode.id as StudyMode)}
+                    type="button"
+                  >
+                    <strong>{mode.label}</strong>
+                    <span>{mode.detail}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <div className="stats-grid">
               <Stat label="総単語数" value={activeCards.length} />
               <Stat label="習得済み" value={mastered} />
@@ -317,20 +362,28 @@ function App() {
               <>
                 <div className="mb-4">
                   <div className="flex justify-between text-sm font-medium">
-                    <span>{reviewedIds.length + 1} / {sessionIds.length}</span>
+                    <span>{reviewedIds.length + 1} / {sessionCards.length}</span>
                     <span>{progress}%</span>
                   </div>
                   <div className="meter mt-2"><span style={{ width: `${progress}%` }} /></div>
                 </div>
                 <button className={flipped ? 'flashcard flipped' : 'flashcard'} onClick={() => setFlipped((value) => !value)} type="button">
                   <span className="category-tag">{currentCard.category}</span>
-                  <span className="pt">{currentCard.pt}</span>
-                  {flipped && (
+                  {currentDirection === 'pt-first' ? (
+                    <span className="pt">{currentCard.pt}</span>
+                  ) : (
                     <span className="answer">
                       <strong>{currentCard.en}</strong>
                       <span>{currentCard.ja}</span>
                     </span>
                   )}
+                  {flipped && currentDirection === 'pt-first' && (
+                    <span className="answer">
+                      <strong>{currentCard.en}</strong>
+                      <span>{currentCard.ja}</span>
+                    </span>
+                  )}
+                  {flipped && currentDirection === 'reverse' && <span className="pt">{currentCard.pt}</span>}
                 </button>
                 <div className="answer-grid mt-5">
                   <button className="know" onClick={() => finishReview('know')} type="button">わかる</button>

@@ -134,6 +134,42 @@
   color: #1d4c38;
 }
 
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.mode-option {
+  display: grid;
+  min-height: 84px;
+  align-content: center;
+  gap: 0.2rem;
+  border: 1px solid #d8d0c2;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 0.7rem;
+  text-align: left;
+}
+
+.mode-option strong {
+  color: #1c2c23;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+
+.mode-option span {
+  color: #71675b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.mode-option.selected {
+  border-color: #2f7d5a;
+  background: #e4f0e7;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -254,7 +290,8 @@ input:focus-visible {
 
 @media (max-width: 430px) {
   .stats-grid,
-  .answer-grid {
+  .answer-grid,
+  .mode-grid {
     grid-template-columns: 1fr;
   }
 
