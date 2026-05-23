@@ -178,6 +178,7 @@ const cards: Card[] = [
   { id: 'som', pt: 'som', en: 'sound', ja: '音', category: 'Fundamentos' },
   { id: 'nota', pt: 'nota', en: 'note', ja: '音符', category: 'Fundamentos' },
   { id: 'tom', pt: 'tom', en: 'tone', ja: '音程', category: 'Fundamentos' },
+  { id: 'anacruse', pt: 'anacruse', en: 'anacrusis / upbeat', ja: '弱起', category: 'Fundamentos' },
   { id: 'violino', pt: 'violino', en: 'violin', ja: 'ヴァイオリン', category: 'Instrumento & Técnica' },
   { id: 'arco', pt: 'arco', en: 'bow', ja: '弓', category: 'Instrumento & Técnica' },
   { id: 'cordas', pt: 'corda(s)', en: 'string(s)', ja: '弦', category: 'Instrumento & Técnica' },

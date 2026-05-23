@@ -14,7 +14,7 @@
 | bemol | ♭ flat | フラット |
 | bequadro | ♮ natural | ナチュラル |
 
-## Fundamentos (13)
+## Fundamentos (14)
 | PT | EN | JA |
 |---|---|---|
 | melodia | melody | メロディー |
@@ -30,6 +30,7 @@
 | som | sound | 音 |
 | nota | note | 音符 |
 | tom | tone | 音程 |
+| anacruse | anacrusis / upbeat | 弱起 |
 
 ## Instrumento & Técnica (14)
 | PT | EN | JA |
@@ -82,4 +83,4 @@
 | Outra vez, desde o início. | Again, from the beginning. | もう一度、最初から。 |
 | Consigo tocar mais devagar. | I can play more slowly. | もっとゆっくり弾けます。 |
 
-## Total: 62 cards
+## Total: 63 cards
