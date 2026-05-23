@@ -232,6 +232,37 @@
   box-shadow: 0 14px 32px rgb(57 42 24 / 10%);
 }
 
+.conversation-card {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  border: 1px solid #d8d0c2;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 1rem;
+  box-shadow: 0 14px 32px rgb(57 42 24 / 10%);
+}
+
+.dialogue {
+  display: grid;
+  gap: 0.75rem;
+  color: #2f2a23;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.dialogue p {
+  border-left: 3px solid #d8d0c2;
+  padding-left: 0.75rem;
+}
+
+.dialogue p:has(+ p) {
+  margin-bottom: 0.1rem;
+}
+
 .category-tag {
   border-radius: 999px;
   background: #eee7db;

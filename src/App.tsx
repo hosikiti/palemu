@@ -8,7 +8,7 @@ type Category =
   | 'Instrumento & Técnica'
   | 'Música Antiga / HIP'
   | 'Frases no Workshop'
-type View = 'home' | 'study' | 'results' | 'test' | 'testResults' | 'stats'
+type View = 'home' | 'study' | 'results' | 'test' | 'testResults' | 'cloze' | 'clozeResults' | 'stats'
 type StudyMode = 'pt-first' | 'reverse' | 'random'
 type StudyDirection = 'pt-first' | 'reverse'
 type CycleSpeed = 'normal' | 'fast'
@@ -32,6 +32,19 @@ interface TestAnswer {
   id: string
   correct: boolean
   timedOut: boolean
+}
+
+interface ClozeQuestion {
+  id: string
+  cardId: string
+  prompt: string[]
+  choices: string[]
+}
+
+interface ClozeAnswer {
+  id: string
+  cardId: string
+  correct: boolean
 }
 
 interface Card {
@@ -65,6 +78,81 @@ const SESSION_SIZE = 10
 const DAY_MS = 24 * 60 * 60 * 1000
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 const TEST_SECONDS = 5
+
+const clozeBank: ClozeQuestion[] = [
+  {
+    id: 'cloze-repetir',
+    cardId: 'pode-repetir',
+    prompt: ['Aluno A: Desculpe, maestro.', 'Aluno A: ____', 'Professor: Claro, desde o compasso 12.'],
+    choices: ['Pode repetir, por favor?', 'Vamos experimentar.', 'Outra vez, desde o início.', 'Não percebi bem.'],
+  },
+  {
+    id: 'cloze-devagar',
+    cardId: 'mais-devagar',
+    prompt: ['Professora: Agora tocamos a passagem toda.', 'Aluno B: ____', 'Professora: Sim, fazemos a metade do tempo.'],
+    choices: ['Mais devagar, por favor.', 'O que significa...?', 'Consigo tocar mais devagar.', 'Pode repetir, por favor?'],
+  },
+  {
+    id: 'cloze-inicio',
+    cardId: 'outra-vez',
+    prompt: ['Professor: A entrada do violino não ficou clara.', 'Aluno A: ____', 'Aluno B: Sim, eu sigo o baixo contínuo.'],
+    choices: ['Outra vez, desde o início.', 'Não percebi bem.', 'Vamos experimentar.', 'Mais devagar, por favor.'],
+  },
+  {
+    id: 'cloze-experimentar',
+    cardId: 'vamos-experimentar',
+    prompt: ['Professora: Sem vibrato, com mais articulação.', 'Aluno A: ____', 'Professora: Exactamente, primeiro só a melodia.'],
+    choices: ['Vamos experimentar.', 'Pode repetir, por favor?', 'Consigo tocar mais devagar.', 'O que significa...?'],
+  },
+  {
+    id: 'cloze-nao-percebi',
+    cardId: 'nao-percebi-bem',
+    prompt: ['Professor: A afinação fica baixa no terceiro tempo.', 'Aluno B: ____', 'Professor: Quero dizer que o Lá está desafinado.'],
+    choices: ['Não percebi bem.', 'Outra vez, desde o início.', 'Mais devagar, por favor.', 'Vamos experimentar.'],
+  },
+  {
+    id: 'cloze-significa',
+    cardId: 'o-que-significa',
+    prompt: ['Aluno A: Na partitura aparece “tiorba”.', 'Aluno A: ____ tiorba?', 'Professora: É um instrumento histórico de cordas.'],
+    choices: ['O que significa...?', 'Pode repetir, por favor?', 'Não percebi bem.', 'Outra vez, desde o início.'],
+  },
+  {
+    id: 'cloze-sem-vibrato',
+    cardId: 'sem-vibrato',
+    prompt: ['Professora: Para este estilo barroco, tocamos esta nota ____.', 'Aluno B: Certo, só com ornamentação no trilo.', 'Professora: Isso mesmo.'],
+    choices: ['sem vibrato', 'tempo forte', 'baixo cifrado', 'arco abaixo'],
+  },
+  {
+    id: 'cloze-baixo-continuo',
+    cardId: 'baixo-continuo',
+    prompt: ['Professor: O cravo e a viola da gamba fazem o ____.', 'Aluno A: Então sigo essa linha para entrar?', 'Professor: Sim, é a base da harmonia.'],
+    choices: ['baixo contínuo', 'baixo cifrado', 'tempo fraco', 'instrumento histórico'],
+  },
+  {
+    id: 'cloze-afinacao',
+    cardId: 'afinacao',
+    prompt: ['Professora: Antes de começarmos, verificamos a ____.', 'Aluno B: O diapasão é 415?', 'Professora: Sim, hoje usamos Lá a 415.'],
+    choices: ['afinação', 'dedilhação', 'ornamentação', 'notação'],
+  },
+  {
+    id: 'cloze-arco-acima',
+    cardId: 'arco-acima',
+    prompt: ['Professor: Nesta anacruse usa ____.', 'Aluno A: Para chegar leve ao tempo forte?', 'Professor: Precisamente.'],
+    choices: ['arco acima', 'arco abaixo', 'tempo fraco', 'bequadro'],
+  },
+  {
+    id: 'cloze-temperamento',
+    cardId: 'temperamento',
+    prompt: ['Aluno B: Este acorde soa diferente no cravo.', 'Professora: Sim, é por causa do ____.', 'Aluno A: Não é igual ao piano moderno.'],
+    choices: ['temperamento', 'compasso', 'ritmo', 'sustenido'],
+  },
+  {
+    id: 'cloze-trilo',
+    cardId: 'trilo',
+    prompt: ['Professora: Aqui, a ornamentação é um ____ curto.', 'Aluno A: Começo na nota superior?', 'Professora: Sim, neste contexto barroco.'],
+    choices: ['trilo', 'tom', 'acorde', 'bemol'],
+  },
+]
 
 const cards: Card[] = [
   { id: 'do', pt: 'Dó', en: 'C', ja: 'ド', category: 'Solfejo' },
@@ -352,6 +440,9 @@ function App() {
   const [testIndex, setTestIndex] = useState(0)
   const [testDeadline, setTestDeadline] = useState(0)
   const [testNow, setTestNow] = useState(() => Date.now())
+  const [clozeQuestions, setClozeQuestions] = useState<ClozeQuestion[]>([])
+  const [clozeAnswers, setClozeAnswers] = useState<ClozeAnswer[]>([])
+  const [clozeIndex, setClozeIndex] = useState(0)
   const [cardIndex, setCardIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -392,6 +483,8 @@ function App() {
   const currentCard = cards.find((card) => card.id === currentSessionCard?.id)
   const currentTestQuestion = testQuestions[testIndex]
   const currentTestCard = cards.find((card) => card.id === currentTestQuestion?.id)
+  const currentClozeQuestion = clozeQuestions[clozeIndex]
+  const currentClozeCard = cards.find((card) => card.id === currentClozeQuestion?.cardId)
   const currentDirection = currentSessionCard?.direction ?? 'pt-first'
   const progress = sessionCards.length ? Math.round((sessionReviews.length / sessionCards.length) * 100) : 0
   const testTimeLeft = view === 'test' ? Math.max(0, Math.ceil((testDeadline - testNow) / 1000)) : TEST_SECONDS
@@ -400,6 +493,11 @@ function App() {
     .filter((answer) => !answer.correct)
     .map((answer) => ({ answer, card: cards.find((card) => card.id === answer.id) }))
     .filter((item): item is { answer: TestAnswer; card: Card } => Boolean(item.card))
+  const clozeCorrect = clozeAnswers.filter((answer) => answer.correct).length
+  const clozeNeedsPractice = clozeAnswers
+    .filter((answer) => !answer.correct)
+    .map((answer) => ({ answer, card: cards.find((card) => card.id === answer.cardId) }))
+    .filter((item): item is { answer: ClozeAnswer; card: Card } => Boolean(item.card))
   const resultKnown = sessionReviews.filter((review) => review.confidence === 'know').length
   const resultNeedsPractice = sessionReviews
     .filter((review) => review.confidence !== 'know')
@@ -424,6 +522,16 @@ function App() {
     setTestNow(now)
     setTestDeadline(now + TEST_SECONDS * 1000)
     setView('test')
+  }
+
+  const startCloze = () => {
+    const questions = shuffleCards(clozeBank)
+      .slice(0, SESSION_SIZE)
+      .map((question) => ({ ...question, choices: shuffleCards(question.choices) }))
+    setClozeQuestions(questions)
+    setClozeAnswers([])
+    setClozeIndex(0)
+    setView('cloze')
   }
 
   const finishReview = (confidence: Confidence) => {
@@ -460,6 +568,26 @@ function App() {
     setTestDeadline(testNow + TEST_SECONDS * 1000)
   }, [currentTestCard, cycleSpeed, testIndex, testNow, testQuestions.length])
 
+  const finishClozeQuestion = (choice: string) => {
+    if (!currentClozeQuestion || !currentClozeCard) return
+    const correct = choice === currentClozeCard.pt
+    if (correct) {
+      setStates((current) => ({
+        ...current,
+        [currentClozeQuestion.cardId]: masterCard(current[currentClozeQuestion.cardId], cycleSpeed),
+      }))
+    }
+    setClozeAnswers((answers) => [
+      ...answers,
+      { id: currentClozeQuestion.id, cardId: currentClozeQuestion.cardId, correct },
+    ])
+    if (clozeIndex + 1 >= clozeQuestions.length) {
+      setView('clozeResults')
+      return
+    }
+    setClozeIndex((index) => index + 1)
+  }
+
   useEffect(() => {
     if (view !== 'test' || !currentTestCard || !testDeadline) return
     const timeout = window.setTimeout(() => finishTestQuestion(null), Math.max(0, testDeadline - testNow))
@@ -482,14 +610,16 @@ function App() {
             Palemu
           </button>
           <nav className="segmented" aria-label="Main navigation">
-            {(['home', 'study', 'test', 'stats'] as View[]).map((item) => (
+            {(['home', 'study', 'test', 'cloze', 'stats'] as View[]).map((item) => (
               <button
                 key={item}
                 className={view === item ? 'active' : ''}
-                onClick={() => (item === 'study' ? startStudy() : item === 'test' ? startTest() : setView(item))}
+                onClick={() =>
+                  item === 'study' ? startStudy() : item === 'test' ? startTest() : item === 'cloze' ? startCloze() : setView(item)
+                }
                 type="button"
               >
-                {item === 'home' ? 'Home' : item === 'study' ? 'Study' : item === 'test' ? 'Test' : 'Stats'}
+                {item === 'home' ? 'Home' : item === 'study' ? 'Study' : item === 'test' ? 'Test' : item === 'cloze' ? 'Cloze' : 'Stats'}
               </button>
             ))}
           </nav>
@@ -514,6 +644,9 @@ function App() {
               </button>
               <button className="ghost mt-3 w-full" onClick={startTest} type="button">
                 テストする ({SESSION_SIZE})
+              </button>
+              <button className="ghost mt-3 w-full" onClick={startCloze} type="button">
+                穴埋め会話 ({SESSION_SIZE})
               </button>
             </div>
 
@@ -743,6 +876,87 @@ function App() {
                         <small>{card.en} / {card.ja}</small>
                       </span>
                       <b>{answer.timedOut ? '時間切れ' : '不正解'}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-copy">全問正解です。</p>
+              )}
+            </section>
+          </section>
+        )}
+
+        {view === 'cloze' && (
+          <section className="flex flex-1 flex-col">
+            {currentClozeQuestion && currentClozeCard ? (
+              <>
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>{clozeAnswers.length + 1} / {clozeQuestions.length}</span>
+                    <span>Lisboa</span>
+                  </div>
+                  <div className="meter mt-2">
+                    <span style={{ width: `${(clozeAnswers.length / clozeQuestions.length) * 100}%` }} />
+                  </div>
+                </div>
+                <section className="conversation-card">
+                  <span className="category-tag">Workshop em Lisboa</span>
+                  <div className="dialogue">
+                    {currentClozeQuestion.prompt.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                </section>
+                <div className="choice-grid mt-5">
+                  {currentClozeQuestion.choices.map((choice) => (
+                    <button key={choice} onClick={() => finishClozeQuestion(choice)} type="button">
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+                <button className="ghost mt-4" onClick={() => setView('home')} type="button">中断</button>
+              </>
+            ) : (
+              <EmptyState title="穴埋め問題がありません" action="Homeに戻る" onAction={() => setView('home')} />
+            )}
+          </section>
+        )}
+
+        {view === 'clozeResults' && (
+          <section className="space-y-5">
+            <div className="hero-panel">
+              <p className="eyebrow">Conversa completa</p>
+              <h1>Conversa</h1>
+              <div className="mt-5">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>正答率</span>
+                  <span>{clozeAnswers.length ? `${clozeCorrect}/${clozeAnswers.length}` : '0/0'}</span>
+                </div>
+                <div className="meter mt-2">
+                  <span style={{ width: `${clozeAnswers.length ? (clozeCorrect / clozeAnswers.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+              <div className="stats-grid mt-5">
+                <Stat label="出題数" value={clozeAnswers.length} />
+                <Stat label="正解" value={clozeCorrect} />
+                <Stat label="復習" value={clozeNeedsPractice.length} />
+              </div>
+              <button className="primary mt-5 w-full" onClick={startCloze} type="button">
+                もう一度穴埋め
+              </button>
+            </div>
+
+            <section className="panel">
+              <h2>復習する表現</h2>
+              {clozeNeedsPractice.length ? (
+                <div className="practice-list">
+                  {clozeNeedsPractice.map(({ card }) => (
+                    <div key={card.id}>
+                      <span>
+                        <strong>{card.pt}</strong>
+                        <small>{card.en} / {card.ja}</small>
+                      </span>
+                      <b>不正解</b>
                     </div>
                   ))}
                 </div>
