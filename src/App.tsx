@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 type Confidence = 'know' | 'unsure' | 'unknown'
@@ -8,7 +8,7 @@ type Category =
   | 'Instrumento & Técnica'
   | 'Música Antiga / HIP'
   | 'Frases no Workshop'
-type View = 'home' | 'study' | 'results' | 'stats'
+type View = 'home' | 'study' | 'results' | 'test' | 'testResults' | 'stats'
 type StudyMode = 'pt-first' | 'reverse' | 'random'
 type StudyDirection = 'pt-first' | 'reverse'
 type CycleSpeed = 'normal' | 'fast'
@@ -21,6 +21,17 @@ interface SessionCard {
 interface SessionReview {
   id: string
   confidence: Confidence
+}
+
+interface TestQuestion {
+  id: string
+  choices: string[]
+}
+
+interface TestAnswer {
+  id: string
+  correct: boolean
+  timedOut: boolean
 }
 
 interface Card {
@@ -53,6 +64,7 @@ const CYCLE_SPEED_KEY = 'musicpt:cycleSpeed'
 const SESSION_SIZE = 10
 const DAY_MS = 24 * 60 * 60 * 1000
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
+const TEST_SECONDS = 5
 
 const cards: Card[] = [
   { id: 'do', pt: 'Dó', en: 'C', ja: 'ド', category: 'Solfejo' },
@@ -208,6 +220,18 @@ function selectSessionCards(
     .slice(0, SESSION_SIZE)
 }
 
+function buildTestQuestions(cardPool: Card[], states: Record<string, CardState>, time: number, cycleSpeed: CycleSpeed): TestQuestion[] {
+  return selectSessionCards(cardPool, states, time, cycleSpeed).map((card) => {
+    const distractors = shuffleCards(cardPool.filter((item) => item.id !== card.id))
+      .slice(0, 3)
+      .map((item) => item.pt)
+    return {
+      id: card.id,
+      choices: shuffleCards([card.pt, ...distractors]),
+    }
+  })
+}
+
 function speakPortuguese(text: string) {
   if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return
   window.speechSynthesis.cancel()
@@ -220,6 +244,18 @@ function speakPortuguese(text: string) {
     .find((item) => item.lang.toLowerCase().startsWith('pt'))
   if (voice) utterance.voice = voice
   window.speechSynthesis.speak(utterance)
+}
+
+function masterCard(state: CardState, cycleSpeed: CycleSpeed): CardState {
+  const now = Date.now()
+  return {
+    ...state,
+    interval: cycleSpeed === 'fast' ? Math.max(state.interval, 4) : Math.max(state.interval, 7),
+    nextReview: now + (cycleSpeed === 'fast' ? FOUR_HOURS_MS : 7 * DAY_MS),
+    easeFactor: Math.max(2.5, state.easeFactor),
+    repetitions: Math.max(2, state.repetitions + 1),
+    lastConfidence: 'know',
+  }
 }
 
 function reviewCard(state: CardState, confidence: Confidence, cycleSpeed: CycleSpeed): CardState {
@@ -266,6 +302,11 @@ function App() {
   const [cycleSpeed, setCycleSpeed] = useState<CycleSpeed>(loadCycleSpeed)
   const [sessionCards, setSessionCards] = useState<SessionCard[]>([])
   const [sessionReviews, setSessionReviews] = useState<SessionReview[]>([])
+  const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([])
+  const [testAnswers, setTestAnswers] = useState<TestAnswer[]>([])
+  const [testIndex, setTestIndex] = useState(0)
+  const [testDeadline, setTestDeadline] = useState(0)
+  const [testNow, setTestNow] = useState(() => Date.now())
   const [cardIndex, setCardIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -288,6 +329,11 @@ function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view])
+  useEffect(() => {
+    if (view !== 'test' || !testDeadline) return
+    const timer = window.setInterval(() => setTestNow(Date.now()), 200)
+    return () => window.clearInterval(timer)
+  }, [testDeadline, view])
 
   const activeCards = cards
   const todayTarget = useMemo(
@@ -299,8 +345,16 @@ function App() {
   const needsReview = activeCards.filter((card) => states[card.id].lastConfidence !== 'know').length
   const currentSessionCard = sessionCards[cardIndex]
   const currentCard = cards.find((card) => card.id === currentSessionCard?.id)
+  const currentTestQuestion = testQuestions[testIndex]
+  const currentTestCard = cards.find((card) => card.id === currentTestQuestion?.id)
   const currentDirection = currentSessionCard?.direction ?? 'pt-first'
   const progress = sessionCards.length ? Math.round((sessionReviews.length / sessionCards.length) * 100) : 0
+  const testTimeLeft = view === 'test' ? Math.max(0, Math.ceil((testDeadline - testNow) / 1000)) : TEST_SECONDS
+  const testCorrect = testAnswers.filter((answer) => answer.correct).length
+  const testNeedsPractice = testAnswers
+    .filter((answer) => !answer.correct)
+    .map((answer) => ({ answer, card: cards.find((card) => card.id === answer.id) }))
+    .filter((item): item is { answer: TestAnswer; card: Card } => Boolean(item.card))
   const resultKnown = sessionReviews.filter((review) => review.confidence === 'know').length
   const resultNeedsPractice = sessionReviews
     .filter((review) => review.confidence !== 'know')
@@ -308,13 +362,23 @@ function App() {
     .filter((item): item is { review: SessionReview; card: Card } => Boolean(item.card))
 
   const startStudy = () => {
-    const session = selectSessionCards(activeCards, states, Date.now(), cycleSpeed)
+    const session = selectSessionCards(activeCards, states, now, cycleSpeed)
       .map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
     setSessionCards(session)
     setSessionReviews([])
     setCardIndex(0)
     setFlipped(false)
     setView('study')
+  }
+
+  const startTest = () => {
+    const questions = buildTestQuestions(activeCards, states, now, cycleSpeed)
+    setTestQuestions(questions)
+    setTestAnswers([])
+    setTestIndex(0)
+    setTestNow(now)
+    setTestDeadline(now + TEST_SECONDS * 1000)
+    setView('test')
   }
 
   const finishReview = (confidence: Confidence) => {
@@ -335,6 +399,28 @@ function App() {
     }
   }
 
+  const finishTestQuestion = useCallback((choice: string | null) => {
+    if (!currentTestCard) return
+    const correct = choice === currentTestCard.pt
+    if (correct) {
+      setStates((current) => ({ ...current, [currentTestCard.id]: masterCard(current[currentTestCard.id], cycleSpeed) }))
+    }
+    setTestAnswers((answers) => [...answers, { id: currentTestCard.id, correct, timedOut: choice === null }])
+    if (testIndex + 1 >= testQuestions.length) {
+      setView('testResults')
+      return
+    }
+    setTestIndex((index) => index + 1)
+    setTestNow(testNow)
+    setTestDeadline(testNow + TEST_SECONDS * 1000)
+  }, [currentTestCard, cycleSpeed, testIndex, testNow, testQuestions.length])
+
+  useEffect(() => {
+    if (view !== 'test' || !currentTestCard || !testDeadline) return
+    const timeout = window.setTimeout(() => finishTestQuestion(null), Math.max(0, testDeadline - testNow))
+    return () => window.clearTimeout(timeout)
+  }, [currentTestCard, finishTestQuestion, testDeadline, testNow, view])
+
   const resetData = () => {
     if (!confirm('学習データをリセットしますか？')) return
     localStorage.removeItem(CARDS_KEY)
@@ -351,9 +437,14 @@ function App() {
             Palemu
           </button>
           <nav className="segmented" aria-label="Main navigation">
-            {(['home', 'study', 'stats'] as View[]).map((item) => (
-              <button key={item} className={view === item ? 'active' : ''} onClick={() => (item === 'study' ? startStudy() : setView(item))} type="button">
-                {item === 'home' ? 'Home' : item === 'study' ? 'Study' : 'Stats'}
+            {(['home', 'study', 'test', 'stats'] as View[]).map((item) => (
+              <button
+                key={item}
+                className={view === item ? 'active' : ''}
+                onClick={() => (item === 'study' ? startStudy() : item === 'test' ? startTest() : setView(item))}
+                type="button"
+              >
+                {item === 'home' ? 'Home' : item === 'study' ? 'Study' : item === 'test' ? 'Test' : 'Stats'}
               </button>
             ))}
           </nav>
@@ -375,6 +466,9 @@ function App() {
               </div>
               <button className="primary mt-5 w-full" onClick={startStudy} type="button">
                 今日の単語を始める ({Math.min(activeCards.length, SESSION_SIZE)} / {activeCards.length})
+              </button>
+              <button className="ghost mt-3 w-full" onClick={startTest} type="button">
+                テストする ({SESSION_SIZE})
               </button>
             </div>
 
@@ -531,6 +625,84 @@ function App() {
                 </div>
               ) : (
                 <p className="empty-copy">今回の再学習対象はありません。</p>
+              )}
+            </section>
+          </section>
+        )}
+
+        {view === 'test' && (
+          <section className="flex flex-1 flex-col">
+            {currentTestCard && currentTestQuestion ? (
+              <>
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>{testAnswers.length + 1} / {testQuestions.length}</span>
+                    <span>{testTimeLeft}s</span>
+                  </div>
+                  <div className="meter mt-2 timer-meter"><span style={{ width: `${(testTimeLeft / TEST_SECONDS) * 100}%` }} /></div>
+                </div>
+                <section className="test-card">
+                  <span className="category-tag">{currentTestCard.category}</span>
+                  <span className="answer">
+                    <strong>{currentTestCard.en}</strong>
+                    <span>{currentTestCard.ja}</span>
+                  </span>
+                </section>
+                <div className="choice-grid mt-5">
+                  {currentTestQuestion.choices.map((choice) => (
+                    <button key={choice} onClick={() => finishTestQuestion(choice)} type="button">
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+                <button className="ghost mt-4" onClick={() => setView('home')} type="button">中断</button>
+              </>
+            ) : (
+              <EmptyState title="テスト対象がありません" action="Homeに戻る" onAction={() => setView('home')} />
+            )}
+          </section>
+        )}
+
+        {view === 'testResults' && (
+          <section className="space-y-5">
+            <div className="hero-panel">
+              <p className="eyebrow">Test complete</p>
+              <h1>Teste</h1>
+              <div className="mt-5">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>正答率</span>
+                  <span>{testAnswers.length ? `${testCorrect}/${testAnswers.length}` : '0/0'}</span>
+                </div>
+                <div className="meter mt-2">
+                  <span style={{ width: `${testAnswers.length ? (testCorrect / testAnswers.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+              <div className="stats-grid mt-5">
+                <Stat label="出題数" value={testAnswers.length} />
+                <Stat label="正解" value={testCorrect} />
+                <Stat label="失敗" value={testNeedsPractice.length} />
+              </div>
+              <button className="primary mt-5 w-full" onClick={startTest} type="button">
+                もう一度テスト
+              </button>
+            </div>
+
+            <section className="panel">
+              <h2>失敗した単語</h2>
+              {testNeedsPractice.length ? (
+                <div className="practice-list">
+                  {testNeedsPractice.map(({ answer, card }) => (
+                    <div key={card.id}>
+                      <span>
+                        <strong>{card.pt}</strong>
+                        <small>{card.en} / {card.ja}</small>
+                      </span>
+                      <b>{answer.timedOut ? '時間切れ' : '不正解'}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-copy">全問正解です。</p>
               )}
             </section>
           </section>
