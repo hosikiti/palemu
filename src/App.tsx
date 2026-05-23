@@ -169,6 +169,30 @@ function shuffleCards<T>(items: T[]): T[] {
   return shuffled
 }
 
+function studyPriority(card: Card, state: CardState, time: number): number {
+  const overdueDays = Math.max(0, time - state.nextReview) / DAY_MS
+  const daysUntilReview = Math.max(0, state.nextReview - time) / DAY_MS
+  const confidenceScore =
+    state.lastConfidence === 'unknown'
+      ? 900
+      : state.lastConfidence === 'unsure'
+        ? 700
+        : state.lastConfidence === null
+          ? 600
+          : 0
+  const dueScore = state.nextReview <= time ? 1000 + overdueDays * 50 : 0
+  const weakScore = isMastered(state) ? 0 : Math.max(0, 7 - state.interval) * 40
+  const soonScore = Math.max(0, 10 - daysUntilReview)
+  const phraseBoost = card.category === 'Frases no Workshop' && !isMastered(state) ? 20 : 0
+  return dueScore + confidenceScore + weakScore + soonScore + phraseBoost
+}
+
+function selectSessionCards(cardPool: Card[], states: Record<string, CardState>, time: number): Card[] {
+  return shuffleCards(cardPool)
+    .sort((first, second) => studyPriority(second, states[second.id], time) - studyPriority(first, states[first.id], time))
+    .slice(0, SESSION_SIZE)
+}
+
 function reviewCard(state: CardState, confidence: Confidence, cycleSpeed: CycleSpeed): CardState {
   const now = Date.now()
   const speedMultiplier = cycleSpeed === 'fast' ? 0.1 : 1
@@ -211,7 +235,6 @@ function App() {
   const [streak, setStreak] = useState<StreakState>(loadStreak)
   const [studyMode, setStudyMode] = useState<StudyMode>(loadStudyMode)
   const [cycleSpeed, setCycleSpeed] = useState<CycleSpeed>(loadCycleSpeed)
-  const [selectedCategories, setSelectedCategories] = useState<Category[]>(categories)
   const [sessionCards, setSessionCards] = useState<SessionCard[]>([])
   const [sessionReviews, setSessionReviews] = useState<SessionReview[]>([])
   const [cardIndex, setCardIndex] = useState(0)
@@ -237,14 +260,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view])
 
-  const activeCards = useMemo(
-    () => cards.filter((card) => selectedCategories.includes(card.category)),
-    [selectedCategories],
-  )
-  const dueCards = useMemo(
-    () => activeCards.filter((card) => states[card.id].nextReview <= now),
-    [activeCards, now, states],
-  )
+  const activeCards = cards
   const todayTarget = useMemo(
     () => activeCards.filter((card) => states[card.id].nextReview <= startOfDay(now) + DAY_MS - 1),
     [activeCards, now, states],
@@ -263,8 +279,7 @@ function App() {
     .filter((item): item is { review: SessionReview; card: Card } => Boolean(item.card))
 
   const startStudy = () => {
-    const session = shuffleCards(dueCards)
-      .slice(0, SESSION_SIZE)
+    const session = selectSessionCards(activeCards, states, Date.now())
       .map((card) => ({ id: card.id, direction: directionForMode(studyMode) }))
     setSessionCards(session)
     setSessionReviews([])
@@ -329,35 +344,10 @@ function App() {
                   <span style={{ width: `${todayTarget.length ? (todayReviewed / todayTarget.length) * 100 : 0}%` }} />
                 </div>
               </div>
-              <button className="primary mt-5 w-full" disabled={dueCards.length === 0} onClick={startStudy} type="button">
-                今日の単語を始める ({Math.min(dueCards.length, SESSION_SIZE)} / {dueCards.length})
+              <button className="primary mt-5 w-full" onClick={startStudy} type="button">
+                今日の単語を始める ({Math.min(activeCards.length, SESSION_SIZE)} / {activeCards.length})
               </button>
             </div>
-
-            <section>
-              <div className="section-title">
-                <h2>カテゴリ</h2>
-                <button type="button" onClick={() => setSelectedCategories(selectedCategories.length === categories.length ? [] : categories)}>
-                  {selectedCategories.length === categories.length ? '全解除' : '全選択'}
-                </button>
-              </div>
-              <div className="chips">
-                {categories.map((category) => (
-                  <label key={category} className={selectedCategories.includes(category) ? 'chip selected' : 'chip'}>
-                    <input
-                      checked={selectedCategories.includes(category)}
-                      onChange={() =>
-                        setSelectedCategories((current) =>
-                          current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
-                        )
-                      }
-                      type="checkbox"
-                    />
-                    {category}
-                  </label>
-                ))}
-              </div>
-            </section>
 
             <section>
               <div className="section-title">
@@ -473,7 +463,7 @@ function App() {
                 <Stat label="わかる" value={resultKnown} />
                 <Stat label="再学習" value={resultNeedsPractice.length} />
               </div>
-              <button className="primary mt-5 w-full" disabled={dueCards.length === 0} onClick={startStudy} type="button">
+              <button className="primary mt-5 w-full" onClick={startStudy} type="button">
                 もう一度やる
               </button>
             </div>
